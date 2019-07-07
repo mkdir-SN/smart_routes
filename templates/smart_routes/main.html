@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.9.0/css/all.css" integrity="sha384-i1LQnF23gykqWXg6jxC2ZbCbUMxyw5gLZY6UiUS98LYV5unm8GWmfkIS6jqJfb4E" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+      .card-custom {
+        height: 650px;
+        width: 100%;
+      }
+      .card-custom > div {
+        height: inherit;
+        width: inherit;
+      }
+      .map-custom {
+        height: 100%;
+        width: 100%;
+      }
+      #list-between {
+        padding: 10px;
+        border: solid 1px grey;
+      }
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+      .form-custom {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .form-limit-error {
+        color: red;
+        font-size: 12px;
+        display: none;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card card-custom">
+      <div class="row no-gutters">
+        <div class="col-md-4 bg-primary">
+          <div class="card-body">
+            <div id="form-container">
+              <input id="form-autocomplete0" class="form-control form-custom form-complete" type="text"
+              placeholder="Enter a location">
+              <input id="form-autocomplete1" class="form-control form-custom form-complete" type="text"
+              placeholder="Enter a location">
+            </div>
+            <div class="form-limit-error">Oops! You can't add more than 10 addresses.</div>
+            <button id="btn-add-location" type="button">Add another location</button>
+          </div>
+        </div>
+        <div class="col-md-8 map-custom">
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script>
+      function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: -34.397, lng: 150.644},
+          zoom: 8
+        });
+        activateFormAutocomplete("form-autocomplete0");
+        activateFormAutocomplete("form-autocomplete1");
+      }
+
+      function activateFormAutocomplete(id) {
+        var input = document.getElementById(id);
+        var autocomplete =  new google.maps.places.Autocomplete(input);
+      }
+
+      document.getElementById("btn-add-location").addEventListener("click", addLocation);
+      var formContainer = document.getElementById("form-container");
+      var templateID = "form-autocomplete"
+      
+      function addLocation() {
+        var input = document.createElement("input");
+        input.type = "text";
+        input.className = "form-control form-custom form-complete"; 
+        var autocompleteForms = document.getElementsByClassName('form-complete');
+        input.id = templateID + autocompleteForms.length.toString();
+        console.log(input.id);
+        formContainer.appendChild(input);
+        activateFormAutocomplete(input.id);
+      }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB48MFEadC8w1pS19p3se3P2rz7SzB641w&libraries=places&callback=initMap"
+    async defer></script>
+  </body>
+</html>
