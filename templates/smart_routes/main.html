@@ -26,9 +26,17 @@
         height: 100%;
         width: 100%;
       }
+      #infowindow-content {
+        padding: 2px;
+      }
       .form-custom {
         width: 100%;
         margin-bottom: 10px;
+      }
+      .form-complete-warning {
+        font-size: 12px;
+        margin-top: -5px;
+        margin-bottom: 5px;
       }
       .form-limit-error {
         color: red;
@@ -72,31 +80,79 @@
           center: {lat: -34.397, lng: 150.644},
           zoom: 8
         });
-        activateFormAutocomplete("form-autocomplete0");
-        activateFormAutocomplete("form-autocomplete1");
-      }
 
-      function activateFormAutocomplete(id) {
-        var input = document.getElementById(id);
-        var autocomplete =  new google.maps.places.Autocomplete(input);
-      }
+        // Init autocomplete for form with id
+        function activateFormAutocomplete(input) {
+          var autocomplete =  new google.maps.places.Autocomplete(input);
+          autocomplete.setFields(['formatted_address', 'geometry', 'icon', 'name', 'place_id']);
 
-      document.getElementById("btn-add-location").addEventListener("click", addLocation);
-      var formContainer = document.getElementById("form-container");
-      var templateID = "form-autocomplete"
-      
-      function addLocation() {
-        var input = document.createElement("input");
-        input.type = "text";
-        input.className = "form-control form-custom form-complete"; 
-        var autocompleteForms = document.getElementsByClassName('form-complete');
-        input.id = templateID + autocompleteForms.length.toString();
-        console.log(input.id);
-        formContainer.appendChild(input);
-        activateFormAutocomplete(input.id);
-      }
+          // Init info window for autocomplete
+          var infowindowContent = $('<div id="infowindow-content"><img src="" width="16" height="16" id="place-icon"><span id="place-name" class="card-title"></span><br><span id="place-address" class="card-subtitle"></span></div>');
+          infowindowContent.insertAfter($(".card-custom"));
+          infowindowContent = infowindowContent.get(0);
+          var infowindow = new google.maps.InfoWindow();
+          infowindow.setContent(infowindowContent);
+
+          // Init marker (red pin) for autocomplete
+          var marker = new google.maps.Marker({
+            map: map
+          });
+
+          // Create dynamic input warning 
+          var inputWarning = $('<div class="text-danger form-complete-warning"> No details available for input: <span></span></div>');
+          inputWarning.insertAfter($("#" + input.id));
+          inputWarning = inputWarning.get(0);
+          inputWarning.style.display = "none";
+
+          // Listener for input in autocomplete form (pressing ENTER or selecting an address)
+          autocomplete.addListener('place_changed', function (){
+            infowindow.close();
+            marker.setVisible(false);
+            var place = autocomplete.getPlace();            
+            
+            if (!place.geometry) {
+              inputWarning.children[0].textContent = '"' + place.name + '"';
+              inputWarning.style.display = "block";
+            }
+            else {
+              inputWarning.style.display = "none";
+              map.setCenter(place.geometry.location);
+              map.setZoom(17);
+              marker.setPosition(place.geometry.location);
+              marker.setVisible(true);
+              console.log(place.formatted_address);
+              console.log(place.name);
+              infowindowContent.children['place-icon'].src = place.icon;
+              infowindowContent.children['place-name'].textContent = place.name;
+              infowindowContent.children['place-address'].textContent = place.formatted_address;
+              infowindow.open(map, marker);
+            }
+          });
+        }
+
+        // Activate the first two autocomplete forms 
+        activateFormAutocomplete(document.getElementById("form-autocomplete0"));
+        activateFormAutocomplete(document.getElementById("form-autocomplete1"));
+
+        // Listener to add additional autocomplete forms
+        document.getElementById("btn-add-location").addEventListener("click", addFormAutocomplete);
+
+        // Creating forms with dynamic id for search autocomplete
+        var formContainer = document.getElementById("form-container");
+
+        function addFormAutocomplete() {
+          var input = document.createElement("input");
+          input.type = "text";
+          input.className = "form-control form-custom form-complete"; 
+          var autocompleteForms = document.getElementsByClassName('form-complete');
+          input.id = "form-autocomplete" + autocompleteForms.length.toString();
+          formContainer.appendChild(input);
+          activateFormAutocomplete(input);
+        }
+      } // End of initMap
+   
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB48MFEadC8w1pS19p3se3P2rz7SzB641w&libraries=places&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOURKEYHERE&libraries=places&callback=initMap"
     async defer></script>
   </body>
 </html>
