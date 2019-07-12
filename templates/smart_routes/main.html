@@ -79,7 +79,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script>
-      apikey = "";
+      apikey = "AIzaSyB48MFEadC8w1pS19p3se3P2rz7SzB641w";
 
       function initMap() {
         var map = new google.maps.Map(document.getElementById('map'), {
@@ -129,6 +129,7 @@
               map.setCenter(place.geometry.location);
               map.setZoom(17);
               marker.setPosition(place.geometry.location);
+              console.log(place.geometry.location.lat(), place.geometry.location.lng());
               marker.setVisible(true);
               infowindowContent.children['place-icon'].src = place.icon;
               infowindowContent.children['place-name'].textContent = place.name;
@@ -145,9 +146,10 @@
         // Listener to add additional autocomplete forms
         document.getElementById("btn-add-location").addEventListener("click", addFormAutocomplete);
 
-        // Creating forms with dynamic id for search autocomplete
+     
         var formContainer = document.getElementById("form-container");
 
+        // Creating forms with dynamic id for search autocomplete
         function addFormAutocomplete() {
           var input = document.createElement("input");
           input.type = "text";
@@ -161,131 +163,162 @@
         document.getElementById("btn-optimize-routes").addEventListener("click", optimizeRoutes);
 
         function optimizeRoutes() {
-
-          console.log("Started optimizeRoutes");
+          // Function associated with btn-optimize-routes
 
           class Location {
-            constructor(parent, place, name, formatted_address, place_id){
-               // g = distance between current node and start node
+            constructor(parent, place){
+              // g = distance between current node and start node
               // h = heuristic = exact distance between current node to end node
               // f = total cost of current node
               this.parent = parent;
               this.place = place;
-              this.name = name;
-              this.formatted_address = formatted_address;
-              this.place_id = place_id; 
               this.f = 0;
               this.g = 0;
               this.h = 0;
             }
-            calculateH(end_node){
-              console.log("Started calculateH");
-              this.h = this.service(end_node);
-              return this.h;
-            }
-            service(end_node){
-              console.log("Started service");
-              var destination = end_node.place;
-              console.log("Started service");
-              var service = new google.maps.DistanceMatrixService();
-              service.getDistanceMatrix(
-              {
-                origins: [this.place],
-                destinations: [destination],
-                travelMode: 'DRIVING'
-              }, this.callback);
-            }
-            callback(response, status){
-              console.log("Started callback");
-              var distance;
-              if (status = 'OK'){
-                var origins = response.originAddresses;
-                var destinations = response.destinationAddresses;
-                var fields = response.rows[0].elements;
-                var element = fields[0];
-                distance = element.distance.text;
-              }
-              console.log(distance);
+            distanceBetween(node){
+              var pt1 = this.place.geometry.location;
+              var pt2 = node.place.geometry.location;
+              var pt1Location = new google.maps.LatLng(pt1.lat(), pt1.lng());
+              var pt2Location = new google.maps.LatLng(pt2.lat(), pt2.lng());
+              var distance = google.maps.geometry.spherical.computeDistanceBetween(pt1Location, pt2Location);
               return distance;
             }
-          }
+          } 
 
-          places = [];
+          locations = [];
           // Instantiate Location objects for each item in autocompletes (from line 88)
           for (var i = 0; i < autocompletes.length; i++){
             var place = autocompletes[i].getPlace();
-            console.log(place.name);
-            places.push(place);
+            var location = new Location(null, place);
+            locations.push(location);
           }
-          console.log("Computed places:" + places);
 
-          function optimize(){
-            console.log("Started optimize()");
-            // Returns list of locations as optimal path from start to end node, otherwise null
-            var startNode = places.shift();
-            startNode = new Location(null, startNode, startNode.name, startNode.formatted_address, startNode.place_id);
-            var endNode = places[places.length-1];
-            endNode = new Location(null, endNode, endNode.name, endNode.formatted_address, endNode.place_id); 
-            var open = [];
-            var closed = [];
-            open.push(startNode); // popped the first node from open (the start)
-
-            while (open.length) {
-
-              // Set the current node to the node with the smallest f
-              var currentNode = open[0];
-              var currentIndex = 0;
-              for (var i = 0; i < open.length; i++){
-                if (open[i].f < currentNode.f) {
-                  currentNode = open[i];
-                  currentIndex = i;
-                } 
-              }
-
-              // Transfer current node from open to closed list 
-              open.splice(currentIndex, 1);
-              closed.push(currentNode);
-
-              // Goal found
-              if (currentNode.place_id === endNode.place_id) {
-                var path = [];
-                current = currentNode;
-                // Recursively obtain path by getting parents of current node
-                while (current.parent != null) {
-                  path.append(current);
-                  current = current.parent;
+          function AstarSearch(){
+            var originalLocationsLength = locations.length;
+            var startLocation = locations.shift();
+            var endLocation = locations[locations.length - 1];
+            var visited = [];
+            console.log("Is locations an array? " + Array.isArray(locations));
+            var startNeighbors = popNeighbor(startLocation, locations);
+            console.log("Is startNeighbors an array? " + Array.isArray(startNeighbors));
+            console.log("startNeighbors length: " + startNeighbors.length);
+            var optimizedEndLocations = search(startLocation, startNeighbors);
+            console.log(optimizedEndLocations);
+            console.log(optimizedEndLocations[0]);
+            var bestPath = getBestPath(optimizedEndLocations);
+            console.log(bestPath);
+          
+            function search(currentLocation, neighbors){
+              // Returns list of endNode(s)
+              if (currentLocation.place.place_id == endLocation.place.place_id){
+                if (validPath(currentLocation)){
+                  var path = [currentLocation];
+                  console.log("Found path is an array: " + Array.isArray(path));
+                  console.log(path[0]);
+                  return path;
                 }
-                path.reverse();
-                return path;
-              }
-              
-              var children = [];
-              for (var i = 0; i < places.length; i++){
-                var place = places[i];
-                var child = new Location(currentNode, place, place.name, place.formatted_address, place.place_id);
-                children.push(child);
-              }
-
-              for (var i = 0; i < children.length; i++){
-                var child = children[i];
-                if (closed.includes(child)){ continue; }
-                child.g = currentNode.g + 1;
-                child.calculateH(endNode);
-                child.f = child.g + child.h;
-                for (var k = 0; k < open.length; k++){
-                  var openNode = open[k];
-                  if (child.place_id == openNode.place_id){
-                    if (child.g > openNode.g){ continue; }
-                  }        
+                else{
+                  return [];
                 }
-                open.push(child);
               }
-            return null 
-          }} // End of optimize
-          console.log(optimize()); } // End of optimizeRoutes
+              else{
+                visited.push(currentLocation);
+                console.log("Pushed " + currentLocation.place.name + " to visited");
+                console.log("Neighbors length: " + neighbors.length);
+                var endLocations = [];
+
+                for (var i = 0; i < neighbors.length; i++){
+                  var neighbor = neighbors[i];
+                  var child = new Location(currentLocation, neighbor.place);
+                  console.log("Child with parent " + currentLocation.place.name + " in question: " + child.place.name);
+                  console.log("Distance between parent " + currentLocation.place.name + " and child: " + child.place.name + ": " + child.distanceBetween(currentLocation));
+                  child.g = currentLocation.g + child.distanceBetween(currentLocation);
+                  child.h = child.distanceBetween(endLocation);
+                  child.f = child.g + child.h;
+                  console.log("g value of " + child.place.name + "from " + currentLocation.place.name + ": " + child.g);
+                  console.log("h value of " + child.place.name + "to " + endLocation.place.name + ": " + child.h);
+                  console.log("f value of " + child.place.name + ": " + child.f);
+                  var newNeighbors = popNeighbor(child, neighbors);
+                  var childEndLocations = search(child, newNeighbors);
+                  endLocations.concat(childEndLocations);
+                }
+                return endLocations;
+              }
+            }
+
+            function inVisitedAndHigher(location){
+              // Returns whether or not if current node is in visited AND has a greater f value than visited counterpart, false otherwise
+              console.log("Started inVisited");
+              for (var i = 0; i < visited.length; i++){
+                visitedLocation = visited[i];
+                if (location.place.place_id == visitedLocation.place.place_id){
+                    if (location.f > visitedLocation.f){
+                      return true;
+                    }
+                }
+              }
+              return false;
+            }
+
+            function validPath(currentLocation){
+              // Returns whether or not path is valid
+              console.log("Started validPath");
+              var testPath = getPath(currentLocation);
+              console.log("testPath length: " + testPath.length);
+              console.log("originalLocationsLength: " + originalLocationsLength);
+              if (testPath.length == originalLocationsLength){
+                console.log("Path is valid!");
+                return true;
+              }
+              return false;
+            }
+
+            function popNeighbor(location, neighbors){
+              // Returns new list of neighbors without altering original neighbors
+              var poppedNeighbors = neighbors.slice(0);
+              for (var i = 0; i < neighbors.length; i++){
+                var neighbor = neighbors[i];
+                if (location.place.place_id == neighbor.place.place_id){
+                  poppedNeighbors.splice(i, 1);
+                }
+              }
+              return poppedNeighbors;
+            }
+
+            function getPath(location){
+              // Returns path (list) by recursively going up parent levels
+              var path = [];
+              var current = location;
+              while (current != null){
+                path.push(current);
+                current = current.parent;
+              }
+              path.reverse();
+              return path;
+            }
+
+            function getBestPath(optimizedEndLocations){
+              // Return path of optimized end node with the lowest f value
+              console.log("getBestPath started");
+              var lowest = optimizedEndLocations[0];
+              console.log("First lowest: " + lowest);
+              for (var i = 0; i < optimizedEndLocations.length; i++){
+                var optimizedEndLocation = optimizedEndLocations[i];
+                if (lowest.f > optimizedEndLocation.f){
+                  lowest = optimizedEndLocation;
+                }
+              }
+              console.log(lowest);
+              var bestPath = getPath(lowest);
+              return bestPath;
+            }
+          } // End of AstarSearch
+          AstarSearch();
+        } // End of optimizeRoutes
       } // End of initMap
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOURKEYHERE&libraries=places&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB48MFEadC8w1pS19p3se3P2rz7SzB641w&libraries=places,geometry&callback=initMap"
     async defer></script>
   </body>
 </html>
