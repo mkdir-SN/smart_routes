@@ -115,19 +115,15 @@
 
           // Listener for input in autocomplete form (pressing ENTER or selecting an address)
           autocomplete.addListener('place_changed', function (){
-            console.log("Place changed");
             infowindow.close();
             marker.setVisible(false);
             var place = autocomplete.getPlace();       
-            console.log(place.name, place.place_id);     
             
             if (!place.geometry) {
-              console.log("Place doesn't have geometry.");
               inputWarning.children[0].textContent = '"' + place.name + '"';
               inputWarning.style.display = "block";
             }
             else {
-              console.log("Place has geometry.");
               $("#" + input.id).val(place.name);
               inputWarning.style.display = "none";
               map.setCenter(place.geometry.location);
@@ -189,6 +185,7 @@
           } 
 
           locations = [];
+
           // Instantiate Location objects for each item in autocompletes (from line 88)
           for (var i = 0; i < autocompletes.length; i++){
             var place = autocompletes[i].getPlace();
@@ -201,31 +198,15 @@
             var startLocation = locations.shift();
             var endLocation = locations[locations.length - 1];
             var visited = [];
-            console.log("Is locations an array? " + Array.isArray(locations));
             var startNeighbors = popNeighbor(startLocation, locations);
-            console.log("Is startNeighbors an array? " + Array.isArray(startNeighbors));
-            console.log("startNeighbors length: " + startNeighbors.length);
             var optimizedEndLocations = search(startLocation, startNeighbors);
-            console.log(optimizedEndLocations);
             var bestPath = getBestPath(optimizedEndLocations);
-            console.log(bestPath);
 
+            // Programmatically re-order the autocomplete fields based on optimized route
             for (var i = 0; i < autocompletes.length; i++){
               var autocomplete = autocompletes[i];
               var location = bestPath[i];
-
-              // Checking
-              console.log(location.place);
-              console.log(location.place.place_id);
-
               autocomplete.set("place", location.place);
-
-              // Checking
-              var place = autocomplete.getPlace();
-              console.log(place === location.place);
-              console.log(place.place_id == location.place.place_id);
-              console.log(place.geometry);
-              console.log(place.geometry == location.place.geometry);
             }
           
             function search(currentLocation, neighbors){
@@ -233,40 +214,26 @@
               
               if (currentLocation.place.place_id == endLocation.place.place_id){
                 if (validPath(currentLocation)){
-                  console.log("[currentLocation] is an array: " + Array.isArray([currentLocation]));
                   return [currentLocation];
                 }
-                else{
-                  return [];
-                }
+                else{ return []; }
               }
               else{
+
                 var endLocations = [];
                 visited.push(currentLocation);
-                console.log("Pushed " + currentLocation.place.name + " to visited");
-                console.log("Neighbors length: " + neighbors.length);
 
                 for (var i = 0; i < neighbors.length; i++){
                   var neighbor = neighbors[i];
                   var child = new Location(currentLocation, neighbor.place);
-                  console.log("Child " + child.place.name +" with parent " + currentLocation.place.name + " in question: " + child);
-                  console.log("Distance between parent " + currentLocation.place.name + " and child: " + child.place.name + ": " + child.distanceBetween(currentLocation));
                   child.g = currentLocation.g + child.distanceBetween(currentLocation);
                   child.h = child.distanceBetween(endLocation);
                   child.f = child.g + child.h;
-                  console.log("g value of " + child.place.name + "from " + currentLocation.place.name + ": " + child.g);
-                  console.log("h value of " + child.place.name + " to " + endLocation.place.name + ": " + child.h);
-                  console.log("f value of " + child.place.name + ": " + child.f);
                   var newNeighbors = popNeighbor(child, neighbors);
                   var childEndLocations = search(child, newNeighbors);
-                  console.log("Length of endLocations of parent " + currentLocation.place.name + ": " + endLocations.length);
-                  console.log("childEndLocations: ",  childEndLocations);
-                  console.log("childEndLocations is an array: " + Array.isArray(childEndLocations));
-                  console.log("Length of childEndLocations: " + childEndLocations.length);
                   if (childEndLocations){
                     endLocations = endLocations.concat(childEndLocations);
                   }
-                  console.log("Length of endLocations after concat: " + endLocations.length);
                 }
                 return endLocations;
               }
@@ -274,12 +241,8 @@
 
             function validPath(currentLocation){
               // Returns whether or not path is valid
-              console.log("Started validPath");
               var testPath = getPath(currentLocation);
-              console.log("testPath length: " + testPath.length);
-              console.log("originalLocationsLength: " + originalLocationsLength);
               if (testPath.length == originalLocationsLength){
-                console.log("Path is valid!");
                 return true;
               }
               return false;
@@ -311,12 +274,9 @@
 
             function getBestPath(optimizedEndLocations){
               // Return path of optimized end node with the lowest f value
-              console.log("getBestPath started");
               var lowest = optimizedEndLocations[0];
-              console.log("First lowest: " + lowest);
               for (var i = 0; i < optimizedEndLocations.length; i++){
                 var optimizedEndLocation = optimizedEndLocations[i];
-                console.log(optimizedEndLocation);
                 if (lowest.f > optimizedEndLocation.f){
                   lowest = optimizedEndLocation;
                 }
