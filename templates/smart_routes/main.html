@@ -115,21 +115,24 @@
 
           // Listener for input in autocomplete form (pressing ENTER or selecting an address)
           autocomplete.addListener('place_changed', function (){
+            console.log("Place changed");
             infowindow.close();
             marker.setVisible(false);
-            var place = autocomplete.getPlace();            
+            var place = autocomplete.getPlace();       
+            console.log(place.name, place.place_id);     
             
             if (!place.geometry) {
+              console.log("Place doesn't have geometry.");
               inputWarning.children[0].textContent = '"' + place.name + '"';
               inputWarning.style.display = "block";
             }
             else {
+              console.log("Place has geometry.");
+              $("#" + input.id).val(place.name);
               inputWarning.style.display = "none";
-
               map.setCenter(place.geometry.location);
               map.setZoom(17);
               marker.setPosition(place.geometry.location);
-              console.log(place.geometry.location.lat(), place.geometry.location.lng());
               marker.setVisible(true);
               infowindowContent.children['place-icon'].src = place.icon;
               infowindowContent.children['place-name'].textContent = place.name;
@@ -145,7 +148,6 @@
 
         // Listener to add additional autocomplete forms
         document.getElementById("btn-add-location").addEventListener("click", addFormAutocomplete);
-
      
         var formContainer = document.getElementById("form-container");
 
@@ -205,60 +207,69 @@
             console.log("startNeighbors length: " + startNeighbors.length);
             var optimizedEndLocations = search(startLocation, startNeighbors);
             console.log(optimizedEndLocations);
-            console.log(optimizedEndLocations[0]);
             var bestPath = getBestPath(optimizedEndLocations);
             console.log(bestPath);
+
+            for (var i = 0; i < autocompletes.length; i++){
+              var autocomplete = autocompletes[i];
+              var location = bestPath[i];
+
+              // Checking
+              console.log(location.place);
+              console.log(location.place.place_id);
+
+              autocomplete.set("place", location.place);
+
+              // Checking
+              var place = autocomplete.getPlace();
+              console.log(place === location.place);
+              console.log(place.place_id == location.place.place_id);
+              console.log(place.geometry);
+              console.log(place.geometry == location.place.geometry);
+            }
           
             function search(currentLocation, neighbors){
-              // Returns list of endNode(s)
+              // Returns list of endLocations(s)
+              
               if (currentLocation.place.place_id == endLocation.place.place_id){
                 if (validPath(currentLocation)){
-                  var path = [currentLocation];
-                  console.log("Found path is an array: " + Array.isArray(path));
-                  console.log(path[0]);
-                  return path;
+                  console.log("[currentLocation] is an array: " + Array.isArray([currentLocation]));
+                  return [currentLocation];
                 }
                 else{
                   return [];
                 }
               }
               else{
+                var endLocations = [];
                 visited.push(currentLocation);
                 console.log("Pushed " + currentLocation.place.name + " to visited");
                 console.log("Neighbors length: " + neighbors.length);
-                var endLocations = [];
 
                 for (var i = 0; i < neighbors.length; i++){
                   var neighbor = neighbors[i];
                   var child = new Location(currentLocation, neighbor.place);
-                  console.log("Child with parent " + currentLocation.place.name + " in question: " + child.place.name);
+                  console.log("Child " + child.place.name +" with parent " + currentLocation.place.name + " in question: " + child);
                   console.log("Distance between parent " + currentLocation.place.name + " and child: " + child.place.name + ": " + child.distanceBetween(currentLocation));
                   child.g = currentLocation.g + child.distanceBetween(currentLocation);
                   child.h = child.distanceBetween(endLocation);
                   child.f = child.g + child.h;
                   console.log("g value of " + child.place.name + "from " + currentLocation.place.name + ": " + child.g);
-                  console.log("h value of " + child.place.name + "to " + endLocation.place.name + ": " + child.h);
+                  console.log("h value of " + child.place.name + " to " + endLocation.place.name + ": " + child.h);
                   console.log("f value of " + child.place.name + ": " + child.f);
                   var newNeighbors = popNeighbor(child, neighbors);
                   var childEndLocations = search(child, newNeighbors);
-                  endLocations.concat(childEndLocations);
+                  console.log("Length of endLocations of parent " + currentLocation.place.name + ": " + endLocations.length);
+                  console.log("childEndLocations: ",  childEndLocations);
+                  console.log("childEndLocations is an array: " + Array.isArray(childEndLocations));
+                  console.log("Length of childEndLocations: " + childEndLocations.length);
+                  if (childEndLocations){
+                    endLocations = endLocations.concat(childEndLocations);
+                  }
+                  console.log("Length of endLocations after concat: " + endLocations.length);
                 }
                 return endLocations;
               }
-            }
-
-            function inVisitedAndHigher(location){
-              // Returns whether or not if current node is in visited AND has a greater f value than visited counterpart, false otherwise
-              console.log("Started inVisited");
-              for (var i = 0; i < visited.length; i++){
-                visitedLocation = visited[i];
-                if (location.place.place_id == visitedLocation.place.place_id){
-                    if (location.f > visitedLocation.f){
-                      return true;
-                    }
-                }
-              }
-              return false;
             }
 
             function validPath(currentLocation){
@@ -305,11 +316,11 @@
               console.log("First lowest: " + lowest);
               for (var i = 0; i < optimizedEndLocations.length; i++){
                 var optimizedEndLocation = optimizedEndLocations[i];
+                console.log(optimizedEndLocation);
                 if (lowest.f > optimizedEndLocation.f){
                   lowest = optimizedEndLocation;
                 }
               }
-              console.log(lowest);
               var bestPath = getPath(lowest);
               return bestPath;
             }
