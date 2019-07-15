@@ -7,16 +7,21 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <style>
       .card-custom {
-        height: 650px;
+        height: 750px;
         width: 100%;
+        overflow: hidden;
       }
       .card-custom > div {
         height: inherit;
         width: inherit;
       }
+      .card-body {
+        height: inherit;
+        width: inherit;
+      }
       .map-custom {
-        height: 100%;
-        width: 100%;
+        height: inherit;
+        width: inherit;
       }
       #list-between {
         padding: 10px;
@@ -29,21 +34,26 @@
       #infowindow-content {
         padding: 2px;
       }
-      #btn-add-location {
+      button {
         margin-bottom: 10px;
       }
       .form-custom {
         width: 100%;
         margin-bottom: 10px;
+        border: none;
+        color: #F0EFEF;
+        background: #282828;
+      }
+      .form-custom:focus {
+        color: #D9D6D6;
+        background-color: #0B0808;
       }
       .form-complete-warning {
         font-size: 12px;
         margin-top: -5px;
         margin-bottom: 5px;
       }
-      .form-limit-error {
-        color: red;
-        font-size: 12px;
+      #form-overflow-warning {
         display: none;
       }
       html, body {
@@ -56,7 +66,7 @@
   <body>
     <div class="card card-custom">
       <div class="row no-gutters">
-        <div class="col-md-4 bg-primary">
+        <div class="col-md-4 bg-dark">
           <div class="card-body">
             <div id="form-container">
               <input id="form-autocomplete0" class="form-control form-custom form-complete" type="text"
@@ -64,9 +74,10 @@
               <input id="form-autocomplete1" class="form-control form-custom form-complete" type="text"
               placeholder="Enter a location">
             </div>
-            <div class="form-limit-error">Oops! You can't add more than 10 addresses.</div>
-            <button id="btn-add-location" type="button">Add another location</button>
-            <button id="btn-optimize-routes" type="button">Optimize route</button>
+            <button id="btn-add-location" class="btn btn-block btn-sm btn-primary" type="button">Add another location</button>
+            <div id="form-overflow-warning" class="text-danger form-complete-warning">Oops! You can't add more than 10 addresses.</div>
+            <button id="btn-optimize-routes" class="btn btn-block btn-sm btn-primary" type="button">Optimize route</button>
+            <button id="btn-display-directions" class="btn btn-block btn-sm btn-primary" type="button">Display directions</button>
           </div>
         </div>
         <div class="col-md-8 map-custom">
@@ -74,6 +85,7 @@
         </div>
       </div>
     </div>
+    <div id="infowindow-content"><img src="" width="16" height="16" id="place-icon"><span id="place-name" class="card-title"></span><br><span id="place-address" class="card-subtitle"></span></div>
     
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
@@ -87,25 +99,28 @@
           zoom: 8
         });
 
+        // Init directionsService and directionsDisplay 
+        var directionsService = new google.maps.DirectionsService;
+        var directionsDisplay = new google.maps.DirectionsRenderer;
+        directionsDisplay.setMap(map);
+
         var autocompletes = [];
 
-        // Init autocomplete for form with id
+        // Init marker (red pin) for autocomplete
+        var marker = new google.maps.Marker({
+          map: map
+        });
+
         function activateFormAutocomplete(input) {
+          // Init autocomplete for form with id
           var autocomplete =  new google.maps.places.Autocomplete(input);
           autocompletes.push(autocomplete);
           autocomplete.setFields(['formatted_address', 'geometry', 'icon', 'name', 'place_id']);
 
           // Init info window for autocomplete
-          var infowindowContent = $('<div id="infowindow-content"><img src="" width="16" height="16" id="place-icon"><span id="place-name" class="card-title"></span><br><span id="place-address" class="card-subtitle"></span></div>');
-          infowindowContent.insertAfter($(".card-custom"));
-          infowindowContent = infowindowContent.get(0);
+          var infowindowContent = document.getElementById("infowindow-content");
           var infowindow = new google.maps.InfoWindow();
           infowindow.setContent(infowindowContent);
-
-          // Init marker (red pin) for autocomplete
-          var marker = new google.maps.Marker({
-            map: map
-          });
 
           // Create dynamic input warning 
           var inputWarning = $('<div class="text-danger form-complete-warning"> No details available for input: <span></span></div>');
@@ -124,7 +139,7 @@
               inputWarning.style.display = "block";
             }
             else {
-              $("#" + input.id).val(place.name);
+              $("#" + input.id).val(place.formatted_address);
               inputWarning.style.display = "none";
               map.setCenter(place.geometry.location);
               map.setZoom(17);
@@ -133,7 +148,14 @@
               infowindowContent.children['place-icon'].src = place.icon;
               infowindowContent.children['place-name'].textContent = place.name;
               infowindowContent.children['place-address'].textContent = place.formatted_address;
-              infowindow.open(map, marker);
+
+              // Listeners to show info window
+              marker.addListener('mouseover', function(){
+                infowindow.open(map, this);
+              });
+              marker.addListener('mouseout', function(){
+                infowindow.close();
+              });
             }
           });
         }
@@ -147,15 +169,55 @@
      
         var formContainer = document.getElementById("form-container");
 
-        // Creating forms with dynamic id for search autocomplete
         function addFormAutocomplete() {
-          var input = document.createElement("input");
-          input.type = "text";
-          input.className = "form-control form-custom form-complete"; 
-          var autocompleteForms = document.getElementsByClassName('form-complete');
-          input.id = "form-autocomplete" + autocompleteForms.length.toString();
-          formContainer.appendChild(input);
-          activateFormAutocomplete(input);
+          // Creating forms with dynamic id for search autocomplete
+          if (autocompletes.length > 10){
+            var overflowWarning = document.getElementById("form-overflow-warning");
+            overflowWarning.style.display = "block";
+          }
+          else{
+            var input = document.createElement("input");
+            input.type = "text";
+            input.className = "form-control form-custom form-complete";
+            var autocompleteForms = document.getElementsByClassName('form-complete');
+            input.id = "form-autocomplete" + autocompleteForms.length.toString();
+            formContainer.appendChild(input);
+            activateFormAutocomplete(input);
+          }
+        }
+
+        document.getElementById('btn-display-directions').addEventListener('click', function() {
+          calculateAndDisplayRoute(directionsService, directionsDisplay);
+        });
+
+        function calculateAndDisplayRoute(directionsService, directionsDisplay){
+          marker.setVisible(false);
+          var waypoints = [];
+          for (var i = 0; i < autocompletes.length; i++){
+            var autocomplete = autocompletes[i];
+            var place = autocomplete.getPlace();
+            waypoints.push({
+              location: {'placeId': place.place_id},
+              stopover: true
+            });
+          }
+
+          var start = waypoints.shift();
+          var end = waypoints.pop();
+
+          directionsService.route({
+          origin: start.location,
+          destination: end.location,
+          waypoints: waypoints,
+          optimizeWaypoints: true,
+          travelMode: 'DRIVING'
+          }, function(response, status) {
+            if (status === 'OK') {
+              directionsDisplay.setDirections(response);
+            } else {
+              window.alert('Directions request failed due to ' + status);
+            }
+          });
         }
 
         document.getElementById("btn-optimize-routes").addEventListener("click", optimizeRoutes);
@@ -170,27 +232,33 @@
               // f = total cost of current node
               this.parent = parent;
               this.place = place;
+              this.level = 1;
               this.f = 0;
               this.g = 0;
               this.h = 0;
             }
-            distanceBetween(node){
+            distanceBetween(location){
               var pt1 = this.place.geometry.location;
-              var pt2 = node.place.geometry.location;
+              var pt2 = location.place.geometry.location;
               var pt1Location = new google.maps.LatLng(pt1.lat(), pt1.lng());
               var pt2Location = new google.maps.LatLng(pt2.lat(), pt2.lng());
               var distance = google.maps.geometry.spherical.computeDistanceBetween(pt1Location, pt2Location);
               return distance;
+            }
+            incrementLevel(parentLocation){
+              this.level += parentLocation.level;
             }
           } 
 
           locations = [];
 
           // Instantiate Location objects for each item in autocompletes (from line 88)
+          console.log("Number of autocompletes: " + autocompletes.length);
           for (var i = 0; i < autocompletes.length; i++){
             var place = autocompletes[i].getPlace();
             var location = new Location(null, place);
             locations.push(location);
+            console.log(location.place.name + " pushed to locations");
           }
 
           function AstarSearch(){
@@ -199,6 +267,7 @@
             var endLocation = locations[locations.length - 1];
             var visited = [];
             var startNeighbors = popNeighbor(startLocation, locations);
+            console.log("Total locations length: " + originalLocationsLength);
             var optimizedEndLocations = search(startLocation, startNeighbors);
             var bestPath = getBestPath(optimizedEndLocations);
 
@@ -211,21 +280,24 @@
           
             function search(currentLocation, neighbors){
               // Returns list of endLocations(s)
-              
-              if (currentLocation.place.place_id == endLocation.place.place_id){
+              if (betterPath(currentLocation)){
+                return [];
+              }
+              else if (currentLocation.place.place_id == endLocation.place.place_id){
                 if (validPath(currentLocation)){
                   return [currentLocation];
                 }
                 else{ return []; }
               }
               else{
-
                 var endLocations = [];
                 visited.push(currentLocation);
 
                 for (var i = 0; i < neighbors.length; i++){
                   var neighbor = neighbors[i];
                   var child = new Location(currentLocation, neighbor.place);
+                  child.incrementLevel(currentLocation);
+                  console.log("Level of " + child.place.name + " with parent " + currentLocation.place.name + ": " + child.level);
                   child.g = currentLocation.g + child.distanceBetween(currentLocation);
                   child.h = child.distanceBetween(endLocation);
                   child.f = child.g + child.h;
@@ -241,9 +313,25 @@
 
             function validPath(currentLocation){
               // Returns whether or not path is valid
-              var testPath = getPath(currentLocation);
-              if (testPath.length == originalLocationsLength){
+              console.log("validPath started!");
+              if (currentLocation.level == originalLocationsLength){
+                console.log("Valid path found!");
                 return true;
+              }
+              return false;
+            }
+
+            function betterPath(currentLocation){
+              // Returns whether or not there exists a Location with the same place_id as currentLocation, less f value than currentLocation, and same level as currentLocation in the visited list.
+              for (var i = 0; i < visited.length; i++){
+                var visitedLocation = visited[i];
+                if (visitedLocation.place.place_id == currentLocation.place.place_id){
+                  if (visitedLocation.level == currentLocation.level){
+                    if (visitedLocation.f <= currentLocation.f){
+                      return true;
+                    }
+                  }
+                }
               }
               return false;
             }
@@ -289,7 +377,7 @@
         } // End of optimizeRoutes
       } // End of initMap
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=APIKEYHERE&libraries=places,geometry&callback=initMap"
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOURKEYHERE&libraries=places,geometry&callback=initMap"
     async defer></script>
   </body>
 </html>
