@@ -7,29 +7,32 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <style>
       .card-custom {
-        height: 750px;
         width: 100%;
-        overflow: hidden;
       }
       .card-custom > div {
-        height: inherit;
-        width: inherit;
+        width: 100%;
+        height: 100%;
       }
       .card-body {
-        height: inherit;
-        width: inherit;
+        width: 100%;
+        height: 100%;
       }
-      .map-custom {
-        height: inherit;
-        width: inherit;
+      #map {
+        width: 100%;
+      }
+      @media only screen and (max-width: 767px)  {
+        .card-custom {
+          width: 100%;
+          height: 100%;
+        }
+        #map {
+          width: 100%;
+          height: 100%;
+        }
       }
       #list-between {
         padding: 10px;
         border: solid 1px grey;
-      }
-      #map {
-        height: 100%;
-        width: 100%;
       }
       #infowindow-content {
         padding: 2px;
@@ -58,6 +61,7 @@
       }
       html, body {
         height: 100%;
+        width: 100%;
         margin: 0;
         padding: 20px;
       }
@@ -78,10 +82,24 @@
             <div id="form-overflow-warning" class="text-danger form-complete-warning">Oops! You can't add more than 10 addresses.</div>
             <button id="btn-optimize-routes" class="btn btn-block btn-sm btn-primary" type="button">Optimize route</button>
             <button id="btn-display-directions" class="btn btn-block btn-sm btn-primary" type="button">Display directions</button>
+            <button class="btn btn-block btn-sm btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+            Send a reminder with route
+            </button>
+            <div class="collapse" id="collapseExample">
+              <div id="reminder-form-container" class="card card-body">
+                <div class="form-group">
+                  <input type="text" class="form-control form-control-sm" id="userPhoneNumber" aria-describedby="userPhoneHelp" placeholder="Enter phone number" required>
+                  <small id="userPhoneHelp" class="form-text text-muted">Follow XXX-XXX-XXX format.</small>
+                </div>
+                <div class="form-group">
+                  <input id="reminderTime" type="time" class="form-control form-control-sm" placeholder="Set reminder time" required>
+                </div>
+                <button id="user-reminder-form" type="submit" class="btn btn-sm btn-primary">Submit</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="col-md-8 map-custom">
-          <div id="map"></div>
+        <div id="map" class="col-md-8 map-custom">
         </div>
       </div>
     </div>
@@ -105,11 +123,7 @@
         directionsDisplay.setMap(map);
 
         var autocompletes = [];
-
-        // Init marker (red pin) for autocomplete
-        var marker = new google.maps.Marker({
-          map: map
-        });
+        var markers = [];
 
         function activateFormAutocomplete(input) {
           // Init autocomplete for form with id
@@ -127,6 +141,12 @@
           inputWarning.insertAfter($("#" + input.id));
           inputWarning = inputWarning.get(0);
           inputWarning.style.display = "none";
+
+          // Init marker (red pin) for autocomplete
+          var marker = new google.maps.Marker({
+            map: map
+          });
+          markers.push(marker);
 
           // Listener for input in autocomplete form (pressing ENTER or selecting an address)
           autocomplete.addListener('place_changed', function (){
@@ -191,7 +211,11 @@
         });
 
         function calculateAndDisplayRoute(directionsService, directionsDisplay){
-          marker.setVisible(false);
+          // Closing all the markers previously to prevent overlap of directions marker
+          for (var i = 0; i < markers.length; i++){
+            var marker = markers[i];
+            marker.setVisible(false);
+          }
           var waypoints = [];
           for (var i = 0; i < autocompletes.length; i++){
             var autocomplete = autocompletes[i];
@@ -218,6 +242,42 @@
               window.alert('Directions request failed due to ' + status);
             }
           });
+        }
+
+        document.getElementById("user-reminder-form").addEventListener("click", generateDirectionsURL);
+
+        function generateDirectionsURL(){
+          // Generate directions URL based on current autocomplete fields
+          var directionsURL = "https://www.google.com/maps/dir/?api=1";
+          var formattedAddresses = [];
+          var placeIDs = [];
+
+          for (var i = 0; i < autocompletes.length; i++){
+            var autocomplete = autocompletes[i];
+            var place = autocomplete.getPlace();
+            formattedAddresses.push(place.formatted_address);
+            placeIDs.push(place.place_id.toString());
+          }
+
+          var origin = encodeURIComponent(formattedAddresses.shift());
+          var origin_place_id = placeIDs.shift();
+          var destination = encodeURIComponent(formattedAddresses.pop());
+          var destination_place_id = placeIDs.shift();
+          var waypoints = formattedAddresses.shift();
+          var waypoints_place_ids = placeIDs.shift();
+
+          for (var i = 0; i < formattedAddresses.length; i++){
+            var formattedAddress = formattedAddresses[i];
+            var placeID = placeIDs[i];
+            waypoints += "|" + formattedAddress;
+            waypoints_place_ids += "|" + placeID;
+          }
+
+          waypoints = encodeURIComponent(waypoints);
+          waypoints_place_ids = encodeURIComponent(waypoints_place_ids);
+
+          directionsURL = directionsURL + "&origin=" + origin + "&origin_place_id=" + origin_place_id + "&destination=" + destination + "&destination_place_id" + destination_place_id + "&waypoints=" + waypoints + "&waypoints_place_ids=" + waypoints_place_ids;
+          return directionsURL;
         }
 
         document.getElementById("btn-optimize-routes").addEventListener("click", optimizeRoutes);
@@ -277,6 +337,8 @@
               var location = bestPath[i];
               autocomplete.set("place", location.place);
             }
+
+            console.log(generateDirectionsURL());
           
             function search(currentLocation, neighbors){
               // Returns list of endLocations(s)
@@ -375,6 +437,7 @@
           } // End of AstarSearch
           AstarSearch();
         } // End of optimizeRoutes
+
       } // End of initMap
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=YOURKEYHERE&libraries=places,geometry&callback=initMap"
