@@ -15,9 +15,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from smart_routes.views import main_view
+from smart_routes.views import (main_view, save_reminder)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('main/', main_view)
+    path('main/', main_view),
+    path('main/save-reminder/', save_reminder)
 ]
