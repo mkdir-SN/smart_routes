@@ -35,11 +35,15 @@
             <div class="collapse" id="user-reminder-form">
               <div id="reminder-form-container" class="card card-body">
                 <h6 class="card-title"> Schedule a reminder </h6>
-                <div class="form-group">
-                  <input id="reminderDate" class="form-control form-control-sm" type="date" name="reminderDate" min="2000-01-02">
+                <div id="reminder-form-margin" class="form-group">
+                  <input id="reminderName" class="form-control form-control-sm reminder-form-margin" type="text" name="reminderName" placeholder="Name" required>
+                  <input id="reminderPhoneNumber" class="form-control form-control-sm" type="text" name="reminderPhoneNumber" placeholder="1-XXX-XXXX" required>
+                  <input id="reminderDate" class="form-control form-control-sm" type="date" name="reminderDate" min="2000-01-02" required>
                   <input id="reminderTime" type="time" name="reminderTime" class="form-control form-control-sm" placeholder="Set reminder time" required>
                   <input id="reminderURL" type="text" name="reminderURL">
                 </div>
+                <div id="form-scheduled-alert" class="form-alert text-success">Reminder scheduled. Sit tight.</div>
+                <div id="form-not-scheduled-alert" class="form-alert text-danger">Oops. Something went wrong. Please try again. </div>
                 <button id="user-reminder-form-btn" type="submit" class="btn btn-sm btn-primary">Submit</button>
               </div>
             </div>
